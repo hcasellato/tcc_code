@@ -64,7 +64,7 @@ double K_half(double K_1, double K_2) {
 }
 
 // Função exata, se houver
-double exact_solution(double x) {
+double exact_solution(double x, double y) {
   return cos(2.0 * PI * x) * cos(2.0 * PI * y);
 }
 
@@ -80,7 +80,6 @@ void FinVol()
   double A, B, C, D;   // (x,y) \in [A.B] X [C,D]
   double alpha, beta;  // Soluções de contorno
   double hx, hy;       // Pulo entre x_i e x_{i+1}
-  double valor_real;   // Valor real da solução
   
   int debug_const = 0; // Altere para 1 caso queira ver o tempo de
                        // execução de cada passo
@@ -167,7 +166,8 @@ void FinVol()
     diag[i] = new double[DMR+1];
 
   double x, y;
-  double d[DMR+1];
+  double d[DMR+1], z[DMR+1];
+  double valor_real[DMR+1];   // Vetor de valores reais da solução
   
   // RESPOSTA!
   double w[DMR + 2];
@@ -301,7 +301,9 @@ void FinVol()
     for(int j = 1; j <= N; j++)
     {
       k = i + (j - 1)*M;
-      d[k] = q(A + (i - 0.5) * hx, C + (j - 0.5) * hy)
+      
+      d[k]          = q(A + (i - 0.5) * hx, C + (j - 0.5) * hy);
+      valor_real[k] = exact_solution(A + (i - 0.5) * hx, C + (j - 0.5) * hy);
     }
   }
 
@@ -357,6 +359,7 @@ void FinVol()
       [ . . . 0 . 1 2 3 . ]   [       |       |       ]
       [ . . . . 0 . 1 2 3 ]   [  VII  |  IIX  |  IX   ]
       [ . . . . . 0 . 1 2 ]   [       |       |       ]
+
   */
 
   double** LUMatrix = new double*[5];
@@ -369,6 +372,9 @@ void FinVol()
   LUMatrix[2][1] = diag[2][1];                  // C
   LUMatrix[3][1] = diag[3][1] / LUMatrix[2][1]; // U
 
+  // Aproveitando loop para Lz = d
+  z[1] = d[1]/LUMatrix[2][1]; // z1 = d1 / 2
+
   for (int i = 2; i <= M; i++)
   {
     LUMatrix[0][i] = diag[0][i]; // = 0
@@ -376,6 +382,9 @@ void FinVol()
     LUMatrix[1][i] = diag[1][i];                                   // L
     LUMatrix[2][i] = diag[2][i] - LUMatrix[1][i]*LUMatrix[3][i-1]; // C
     LUMatrix[3][i] = diag[3][i] / LUMatrix[2][i];                  // U
+
+    // zi = (di - 1.z[i-1]) / 2
+    z[i] = (d[i] - LUMatrix[1][i]*z[i-1]) / LUMatrix[2][i];
   }
 
   // Passo 5.2 >> Intermediário (para bL, L, C e U) e Final (para bU)
@@ -390,53 +399,70 @@ void FinVol()
                                 - LUMatrix[0][i]*LUMatrix[4][i - M]; // C
     
     LUMatrix[3][i] = diag[3][i] / LUMatrix[2][i];                    // U (= 0 quando i = DMR)
+
+    // zi = (di - 1.z[i-1] - 0.z[i-M]) / 2
+    z[i] = (d[i] - LUMatrix[1][i]*z[i-1] - LUMatrix[0][i]*z[i-M]) / LUMatrix[2][i];
   }
 
+  /*
+    Ax = d => L(Ux) = d => Lz = d => Uw = z => w
 
+    [ 2 . . . . . . . . ] [ a ]   [ 2a           ]   [ a =   d1               / 2 ]
+    [ 1 2 . . . . . . . ] [ b ]   [ 2b + 1a      ]   [ b = ( d2 - 1.a )       / 2 ]
+    [ . 1 2 . . . . . . ] [ c ]   [ 2c + 1b      ]   [ c = ( d3 - 1.b )       / 2 ]
+    [ 0 . 1 2 . . . . . ] [ d ]   [ 2d + 1c + 0a ]   [ d = ( d4 - 1.c - 0.a ) / 2 ]
+    [ . 0 . 1 2 . . . . ] [ e ] = [ 2e + 1d + 0b ] = [ e = ( d5 - 1.d - 0.b ) / 2 ]
+    [ . . 0 . 1 2 . . . ] [ f ]   [ 2f + 1e + 0c ]   [ f = ( d6 - 1.e - 0.c ) / 2 ]
+    [ . . . 0 . 1 2 . . ] [ g ]   [ 2g + 1f + 0d ]   [ g = ( d7 - 1.f - 0.d ) / 2 ]
+    [ . . . . 0 . 1 2 . ] [ h ]   [ 2h + 1g + 0e ]   [ h = ( d8 - 1.g - 0.e ) / 2 ]
+    [ . . . . . 0 . 1 2 ] [ i ]   [ 2i + 1h + 0f ]   [ i = ( d9 - 1.h - 0.f ) / 2 ]
 
+    [ _ 3 . 4 . . . . . ] [ a ]   [ a + 3b + 4d ]     [ a = z1 - 3b - 4d ]
+    [ . _ 3 . 4 . . . . ] [ b ]   [ b + 3c + 4e ]     [ b = z2 - 3c - 4e ]
+    [ . . _ 3 . 4 . . . ] [ c ]   [ c + 3d + 4f ]     [ c = z3 - 3d - 4f ]
+    [ . . . _ 3 . 4 . . ] [ d ]   [ d + 3e + 4g ]     [ d = z4 - 3e - 4g ]
+    [ . . . . _ 3 . 4 . ] [ e ] = [ e + 3f + 4h ]   = [ e = z5 - 3f - 4h ]
+    [ . . . . . _ 3 . 4 ] [ f ]   [ f + 3g + 4i ]     [ f = z6 - 3g - 4i ]
+    [ . . . . . . _ 3 . ] [ g ]   [ g + 3h      ] M   [ g = z7 - 3h      ]
+    [ . . . . . . . _ 3 ] [ h ]   [ h + 3i      ] 3   [ h = z8 - 3i      ]
+    [ . . . . . . . . _ ] [ i ]   [ i           ] W   [ i = z9           ]
+  */
 
+  // Passo 6.1 >> Resolver Lz = d para obter z  
+  // ...
 
+  // Passo 6.2 >> Resolver Uw = z para obter w
+  w[0]     = alpha;
+  w[DMR+1] = beta;
 
+  w[DMR]   = z[DMR];
 
+  for (int i = DMR - 1; i >= DMR - M + 1; i--)
+    w[i] = z[i+1] - LUMatrix[3][i]*w[i+1];
 
-  for(int i = 2; i < N; i++)
-  {
-    l[i] = a[i] - (c[i] * u[i-1]);
-    u[i] = b[i] / l[i];
-    z[i] = (d[i] - (c[i] * z[i-1])) / l[i];
-  }
-  
-  // Passo 7
-  l[N] = a[N] - (c[N] * u[N-1]);
-  z[N] = (d[N] - (c[N] * z[N-1])) / l[N];
-  
+  for (int i = DMR - M; i >= 1; i--)
+    w[i] = z[i+1] - LUMatrix[3][i]*w[i+1] - LUMatrix[0][i]*w[i+M];
+
   if(debug_const == 1)
-    cout << "Passo 7: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+    cout << "Passo 6: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
 
-  // Passo 7
-  w[0]   = alpha;
-  w[N+1] = beta;
-  w[N]   = z[N];
-
-  // Passo 8
-  for(int i = N - 1; i >= 1; i--)
-    w[i] = z[i] - (u[i]*w[i+1]);
-
+  // =================================================================
+  // Final
   double Tempo_TOTAL = (double)(clock() - time_req)/CLOCKS_PER_SEC;
   double somaErro = 0;
   
   // Impressão dos Valores
   // Por favor, crie a pasta antes!
   ofstream file;
-  string name_file = "2D_finVolMet/2D_finVolMet_" + to_string(N) + ".txt";
+  string name_file = "2D_finVolMet/2D_finVolMet_" + to_string(DMR) + ".txt";
 
   file.open(name_file);
 
-  file << "Tabela de valores para implementação com " << N << " subintervalos" << endl;
+  file << "Tabela de valores para implementação com " << DMR << " subintervalos" << endl;
   file << fixed << setprecision(12);
   file << "Tempo de execução = " << Tempo_TOTAL << " seg.\n\n";
   file << "x_i;w_i;y_i;|e_a|;" << endl;
-  for (int i = 0; i <= N+1; i++)
+  for (int i = 0; i <= DMR+1; i++)
   {
     valor_real = exact_solution(A + i*h);
     file << A + i*h << ";" << w[i] << ";" << valor_real << ";" << abs(w[i] - valor_real) << ";" << endl;
