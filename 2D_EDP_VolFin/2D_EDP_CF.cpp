@@ -50,12 +50,14 @@ const double PI2 = 9.869604401089358618834;    //value of pi^2
 //
 // =================================================================
 
+// condições do lados dir e esquerdo
+
 double K_function(double x) {
   return 1.0;
 }
 
 double q(double x, double y) {
-  return - 8.0 * PI2 * cos(2.0 * PI * x) * cos(2.0 * PI * y);
+  return 0; //4.0 * PI2 * cos(2.0 * PI * x * 0) * cos(2.0 * PI * y * 0);
 }
 
 // Funciona para ambos 'i' e 'j'
@@ -65,7 +67,7 @@ double K_half(double K_1, double K_2) {
 
 // Função exata, se houver
 double exact_solution(double x, double y) {
-  return cos(2.0 * PI * x) * cos(2.0 * PI * y);
+  return cos(2.0 * PI * x * 0) * cos(2.0 * PI * y * 0);
 }
 
 // =================================================================
@@ -74,15 +76,15 @@ double exact_solution(double x, double y) {
 void FinVol()
 {
   // ================= | Variáveis!
-  int M, N, DMR;       // Dimensões M,N da matriz e
-                       // Dimensão da Matriz Resultante (DMR)
+  int M, N, DMR;           // Dimensões M,N da matriz e
+                           // Dimensão da Matriz Resultante (DMR)
 
-  double A, B, C, D;   // (x,y) \in [A.B] X [C,D]
-  double alpha, beta;  // Soluções de contorno
-  double hx, hy;       // Pulo entre x_i e x_{i+1}
+  double A, B, C, D;       // (x,y) \in [A.B] X [C,D]
+  double alpha, beta;      // Soluções de contorno
+  double hx, hy, hx2, hy2; // Pulo entre x_i e x_{i+1}
   
-  int debug_const = 0; // Altere para 1 caso queira ver o tempo de
-                       // execução de cada passo
+  int debug_const = 0;     // Altere para 1 caso queira ver o tempo de
+                           // execução de cada passo
  
   clock_t time_req, inter_time; // Para medir o tempo de execução!
   
@@ -92,9 +94,6 @@ void FinVol()
   A = C = 0.0;
   B = D = 1.0;
   
-  alpha = 0.0; // ??????
-  beta  = 1.0; // ??????
-
   M   = 25;
   N   = 25;
 
@@ -180,8 +179,8 @@ void FinVol()
   time_req = inter_time = clock();
 
   // Passo 1
-  hx = (B - A)/(DMR + 1);
-  hy = (D - C)/(DMR + 1);
+  hx = (B - A)/M;
+  hy = (D - C)/N;
 
   hx2 = pow(hx,2);
   hy2 = pow(hy,2);
@@ -193,107 +192,6 @@ void FinVol()
   Ky[0]     = K_function(C);
   Ky[DMR+1] = K_function(D);
 
-  for(int i = 1; i <= DMR; i++)
-  {
-    Kx[i] = K_function(A + (i - 0.5) * hx);
-    Ky[i] = K_function(C + (i - 0.5) * hy);
-
-    diag[2][i] = 0; // garantindo 0 para diag. principal
-
-    // Aproveitando o loop para assinalar valores à 'd'
-    // d[i] = q() >> talvez pensar numa aritmetica no futuro
-  }
-
-  if(debug_const == 1)
-    cout << "Passo 1: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
-  inter_time = clock();
-
-  // Passo 2.1 >> Diagonais exteriores
-  // 0: . . . 4 5 6 7 8 9 :N
-  // 4: 1 2 3 4 5 6 . . . :S
-  for(int i = 1; i <= DMR - M; i++)
-  {
-    diag[4][i]      = - K_half(Ky[i + 1]    , Ky[i]    ) / hy2; // Diag. Sul
-    diag[0][M + i]  = - K_half(Ky[M + i - 1], Ky[M + i]) / hy2; // Diag. Norte
-
-    diag[2][i]     -= diag[4][i] + diag[0][M + i];            // Diag. Central
-  }
-
-  // Passo 2.2 >> Contorno das Diagonais Exteriores
-  for(int i = 1; i <= M; i++)
-  {
-    diag[4][DMR - i + 1] = 0; // Contorno Sul
-    diag[0][i]           = 0; // Contorno Norte
-  }
-
-  if(debug_const == 1)
-    cout << "Passo 2: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
-  inter_time = clock();
-
-  // Passo 3.1 >> Diagonais Internas
-  /*
-    OBS.: O seguinte código procura usar aritmética para acessar os valores
-    das diagonais internas sem usar condicionais (if/else). O objetivo dessa
-    digressão seria otimizar o programa.
-
-    Mesmo assim, esse "pensamento otimizado" foi desenhado para um só while.
-    Devido ser necessário adicionar os valores das diagonais internas à cen-
-    tral, foi necessário um whileloop complementar.
-
-    Ainda não tenho certeza se essas horas perdidas tentando encontrar uma
-    aritmética ligeiramente elegante serviram de facto para otimizar o pro-
-    grama, porém não gostaria de jogar fora todo o trabalho que tive por u-
-    ma pedra no caminho. O código que usei como teste das diagonais, assim
-    como a versão com somente um whileLoop, pode ser encontrada no arquivo
-    test.cpp.
-
-    alea iacta est.
-  */
-
-  // 1: . 2 3 . 5 6 . 8 9 :O
-  int aux_geral = 0, aux_oeste = 0, aux_leste = 1;
-  while(aux_oeste <= DMR)
-  {
-    diag[1][aux_oeste]  = - K_half(Kx[aux_oeste], Kx[aux_oeste + 1]) / hx2;
-
-    diag[2][aux_oeste] -= diag[1][aux_oeste];
-
-    aux_geral++;
-    aux_oeste += aux_geral % 2 + 1;
-  }
-
-  // 3: 1 2 . 4 5 . 7 8 . :L
-  aux_geral = 0;
-  while(aux_leste <= DMR)
-  {
-    diag[3][aux_leste]  = - K_half(Kx[aux_leste], Kx[aux_leste + 1]) / hx2;
-
-    diag[2][aux_leste] -= diag[3][aux_leste];
-
-    aux_geral++;
-    aux_leste += (aux_geral + 1) % 2 + 1;
-  }
-  
-  // Passo 3.2 >> Contorno das Diagonais Internas
-  int aux_contorno = 1;
-  while(aux_contorno <= DMR)
-  {
-    diag[1][aux_contorno]   = 0;
-    diag[3][aux_contorno-1] = 0;
-
-    aux_contorno += 3;
-  }
-  diag[3][DMR] = 0;
-
-
-  if(debug_const == 1)
-    cout << "Passo 3: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
-  inter_time = clock();
-
-  // Passo 4 >> Matriz d com aritmética k (pelo livro)
-  // Tudo indica que não é necessário assignment de valores 
-  // fora dos forloops, como feito no exemplo 1D.
-
   int k; // aritmética k = i + (j - 1)M
 
   for(int i = 1; i <= M; i++)
@@ -301,20 +199,60 @@ void FinVol()
     for(int j = 1; j <= N; j++)
     {
       k = i + (j - 1)*M;
+
+      Kx[k] = K_function(A + (i - 0.5) * hx);
+      Ky[k] = K_function(C + (j - 0.5) * hy);
+
+      diag[2][k] = 0.0; // garantindo 0 para diag. principal
+
+      // Aproveitando o loop para assinalar valores à 'd'
+      // d[i] = q() >> talvez pensar numa aritmetica no futuro
+    }
+  }
+
+  if(debug_const == 1)
+    cout << "Passo 1: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+  inter_time = clock();
+
+  // Passo 2 >> Montagem da Matriz
+  for(int i = 1; i <= M; i++){
+    for (int j = 1; j <= N; j++){
+      k = i + (j - 1)*M;
+
+      // Passo 2.1 >> Diagonais exteriores
+      // 0: . . . 4 5 6 7 8 9 :N
+      // 4: 1 2 3 4 5 6 . . . :S
+
+      diag[0][k] = (j > 1) ? -K_half(Ky[k], Ky[k - 1]) / hy2 : 0.0;
+      diag[4][k] = (j < N) ? -K_half(Ky[k], Ky[k + 1]) / hy2 : 0.0;
+
+      // Passo 2.2 >> Diagonais internas
+      // 1: . 2 3 . 5 6 . 8 9 :O
+      // 3: 1 2 . 4 5 . 7 8 . :L
+      diag[1][k] = (i > 1) ? -K_half(Kx[k], Kx[k - 1]) / hx2 : 0.0;
+      diag[3][k] = (i < M) ? -K_half(Kx[k], Kx[k + 1]) / hx2 : 0.0;
+
+      // Passo 2.3 >> Diagonal Central
+      diag[2][k] = -(diag[0][k] + diag[1][k] + diag[3][k] + diag[4][k]);
+    }
+  }
+
+  if(debug_const == 1)
+    cout << "Passo 2: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+  inter_time = clock();
+
+  // Passo 3 >> Matriz d
+  for(int i = 1; i <= M; i++){
+    for(int j = 1; j <= N; j++){
+      k = i + (j - 1)*M;
       
       d[k]          = q(A + (i - 0.5) * hx, C + (j - 0.5) * hy);
       valor_real[k] = exact_solution(A + (i - 0.5) * hx, C + (j - 0.5) * hy);
     }
   }
 
-  /*
-    OBS.: Eu compreendo que depois de uma grande aritmética no
-    passo 3.1, usar dois forLoops encadeados é meio broxante.
-    Porém, estou cansado!
-  */
-
   if(debug_const == 1)
-    cout << "Passo 4: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+    cout << "Passo 3: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
   inter_time = clock();
 
   // ============================| Fatoração de Crout especializada
@@ -366,7 +304,7 @@ void FinVol()
   for (int i = 0; i < 5; i++)
     LUMatrix[i] = new double[DMR+1];
 
-  // Passo 5.1 >> Início (Block I, without (Upper) bands)
+  // Passo 4.1 >> Início (Block I, without (Upper) bands)
   LUMatrix[0][1] = diag[0][1]; // = 0             bL
   LUMatrix[1][1] = diag[1][1]; // = 0              L
   LUMatrix[2][1] = diag[2][1];                  // C
@@ -387,17 +325,17 @@ void FinVol()
     z[i] = (d[i] - LUMatrix[1][i]*z[i-1]) / LUMatrix[2][i];
   }
 
-  // Passo 5.2 >> Intermediário (para bL, L, C e U) e Final (para bU)
+  // Passo 4.2 >> Intermediário (para bL, L, C e U) e Final (para bU)
   for (int i = M + 1; i <= DMR; i++)
   {
     LUMatrix[0][i] = diag[0][i];                                     // band L
-    LUMatrix[4][i] = diag[4][i] / LUMatrix[2][i];                    // band U (= 0 para i > DMR - M)
     
     LUMatrix[1][i] = diag[1][i];                                     // L
     
     LUMatrix[2][i] = diag[2][i] - LUMatrix[1][i]*LUMatrix[3][i - 1]
                                 - LUMatrix[0][i]*LUMatrix[4][i - M]; // C
     
+    LUMatrix[4][i] = diag[4][i] / LUMatrix[2][i];                    // band U (= 0 para i > DMR - M)
     LUMatrix[3][i] = diag[3][i] / LUMatrix[2][i];                    // U (= 0 quando i = DMR)
 
     // zi = (di - 1.z[i-1] - 0.z[i-M]) / 2
@@ -428,23 +366,44 @@ void FinVol()
     [ . . . . . . . . _ ] [ i ]   [ i           ] W   [ i = z9           ]
   */
 
-  // Passo 6.1 >> Resolver Lz = d para obter z  
+  // Passo 5.1 >> Resolver Lz = d para obter z  
   // ...
 
-  // Passo 6.2 >> Resolver Uw = z para obter w
-  w[0]     = alpha;
-  w[DMR+1] = beta;
-
+  // Passo 5.2 >> Resolver Uw = z para obter w
   w[DMR]   = z[DMR];
 
   for (int i = DMR - 1; i >= DMR - M + 1; i--)
-    w[i] = z[i+1] - LUMatrix[3][i]*w[i+1];
+    w[i] = z[i] - LUMatrix[3][i]*w[i+1];
 
   for (int i = DMR - M; i >= 1; i--)
-    w[i] = z[i+1] - LUMatrix[3][i]*w[i+1] - LUMatrix[0][i]*w[i+M];
+    w[i] = z[i] - LUMatrix[3][i]*w[i+1] - LUMatrix[4][i]*w[i+M];
 
   if(debug_const == 1)
-    cout << "Passo 6: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+    cout << "Passo 5: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
+
+  // Passo 6 >> Campo de Velocidades
+  double** campoVel = new double*[2];
+  for (int i = 0; i < 2; i++)
+    campoVel[i] = new double[DMR+1];
+
+  for(int i = 1; i <= M; i++){
+    for (int j = 1; j <= N; j++){
+      k = i + (j - 1)*M;
+
+      // Inicializando com 0
+      campoVel[0][k] = 0;
+      campoVel[1][k] = 0;
+
+      // Passo 6.1 >> Leste + Oeste
+      campoVel[0][k] += (i > 1) ? -(K_half(Kx[k], Kx[k - 1]) * (w[k] - w[k-1])) / (hx * 2) : 0.0;
+      campoVel[0][k] += (i < M) ? -(K_half(Kx[k], Kx[k + 1]) * (w[k+1] - w[k])) / (hx * 2) : 0.0;
+ 
+      // Passo 6.2 >> Norte + Sul
+      campoVel[1][k] += (j > 1) ? -(K_half(Ky[k], Ky[k - M]) * (w[k] - w[k-M])) / (hy * 2) : 0.0;
+      campoVel[1][k] += (j < N) ? -(K_half(Ky[k], Ky[k + 1]) * (w[k+M] - w[k])) / (hy * 2) : 0.0;
+      
+    }
+  }
 
   // =================================================================
   // Final
@@ -461,16 +420,29 @@ void FinVol()
   file << "Tabela de valores para implementação com " << DMR << " subintervalos" << endl;
   file << fixed << setprecision(12);
   file << "Tempo de execução = " << Tempo_TOTAL << " seg.\n\n";
-  file << "x_i;w_i;y_i;|e_a|;" << endl;
-  for (int i = 0; i <= DMR+1; i++)
-  {
-    valor_real = exact_solution(A + i*h);
-    file << A + i*h << ";" << w[i] << ";" << valor_real << ";" << abs(w[i] - valor_real) << ";" << endl;
-    somaErro += abs(w[i] - valor_real);
-  }
-  file.close();
+  file << "x;y;f(x,y);Vx;Vy" << endl;
 
-  cout << "(" << N << ") Erro médio: " << somaErro / (N+1) << " em " << Tempo_TOTAL << "s" << endl;
+  //int somaKappa = 0;
+  for (int i = 1; i <= DMR; i++){
+    //somaKappa += Ky[i];
+    somaErro += abs(w[i] - valor_real[i]);
+  }
+  
+  for(int i = 1; i <= M; i++){
+    for(int j = 1; j <= N; j++){
+      k = i + (j - 1)*M;
+      file << A + (i - 0.5) * hx << ";";
+      file << C + (j - 0.5) * hy << ";";
+      file << w[k]               << ";";
+      file << campoVel[0][k]     << ";";
+      file << campoVel[1][k]     << endl;
+    }
+  }
+
+  file.close();
+  cout << "(" << DMR << ") Erro médio: " << somaErro / DMR << " em " << Tempo_TOTAL << "s" << endl;
+  //cout << somaKappa / DMR << endl;
+
   for (int i = 0; i < 5; i++)
   {
     delete[] diag[i];
@@ -478,17 +450,18 @@ void FinVol()
   }
   delete[] diag;
   delete[] LUMatrix;
+  
 }
 
 // Main
 int main()
 {
   cout << "Versão SEM paralelização" << endl;
+  
   cout << fixed << setprecision(12);
-  for(int i = 100; i < 1000; i+=100)
-    FinVol(i*100);
+  FinVol();
 
   return 0;
 }
 
-// g++ -o EDP-CF EDP-CF.cpp && ./EDP-CF
+// g++ 2D_EDP_CF.cpp -lm -o 2D_EDP_CF && ./2D_EDP_CF
