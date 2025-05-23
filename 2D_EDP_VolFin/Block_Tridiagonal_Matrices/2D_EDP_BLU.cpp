@@ -161,8 +161,7 @@ void FinVol()
   N   = 25;
 
   DMR = M * N;
-  TB  = 25; // (int)sqrt((double)DMR);
-  // if (TB * TB < DMR) TB++; I really tried ;~;
+  TB  = 25; 
 
   int bli = 0; // Block Local Index
 
@@ -299,9 +298,9 @@ void FinVol()
     Ã1 = A1, G1 = A1` * C1 (.` é a inversa)        3.1
     
     Ãi = Ai - B[i] * G[i-1], i = 2, 3, ..., n      3.2
-    Gi = Ai` * Ci,           i = 2, 3, ..., n-1    3.3
+    Gi = Ãi` * Ci,           i = 2, 3, ..., n-1    3.3
   
-    obs1.: Ai * Gi = Ai * Ai` * Ci => Ai * Gi = Ci
+    obs1.: Ãi * Gi = Ãi * Ãi` * Ci => Ãi * Gi = Ci
 
     então,
 
@@ -319,12 +318,15 @@ void FinVol()
   for(int i = 0; i < 5; i++)
     LUMatrix[i] = new double[DMR+1];
 
-  double** gamma = new double*[TB+1]; // Vetor de gamma com TB blocos
+  double*** gamma = new double**[TB+1]; // damn, Gamma is column-wise
   double** z     = new double*[TB+1]; // Vetor intermediario Lz = f
   
   for(int i = 0; i <= TB; i++)
   {
-    gamma[i] = new double[TB+1];
+    gamma[i] = new double*[TB+1];
+    for (int j = 0; j <= TB; j++)
+      gamma[i][j] = new double[TB+1]; // Third dimension (z-axis)
+
     z[i]     = new double[TB+1];
   }
 
@@ -361,8 +363,9 @@ void FinVol()
     LUMatrix[1][k] = diag[1][k];
   }
 
-  // A1 * G1 = C1 => G1
-  LU_solve(diag, diag[4], gamma[1], 1);
+  // Ã1 * G1 = C1 => G1
+  for(int i = 1; i <= TB; i++)
+    LU_solve(LUMatrix, diag[4], gamma[1][i], 1);
 
   int inicio, final;
   for(int r = 2; r < TB; r++)
@@ -378,14 +381,18 @@ void FinVol()
       LUMatrix[0][k] = diag[0][k];
 
       // Ãi = A[i] - B[i] * G[i-1], i = 2, 3, ..., n-1
-      LUMatrix[2][k] = diag[2][k] - LUMatrix[0][k] * gamma[r-1][bli];
+      LUMatrix[2][k] = diag[2][k] - LUMatrix[0][k] * gamma[r-1][bli][bli];
+      // Explanation gamma[X][c][l] -> X is the block Gi
+      //                               c is for column, l is for row
+
 
       // É só a diagonal central, pois B e Gamma só tem diagonal central
     }
 
     // Passo 3.3
-    // Ai * Gi = Ci,           i = 2, 3, ..., n-1 
-    LU_solve(diag, diag[4], gamma[r], inicio);
+    // Ãi * Gi = Ci,           i = 2, 3, ..., n-1
+    for(int i = 1; i <= TB; i++)
+      LU_solve(LUMatrix, diag[4], gamma[r][i], inicio);
   }
 
 
@@ -397,16 +404,16 @@ void FinVol()
     LUMatrix[0][k] = diag[0][k];
 
     // Ãi = A[i] - B[i] * G[i-1], i = n 
-    LUMatrix[2][k] = diag[2][k] - LUMatrix[0][k] * gamma[TB][bli];
+    LUMatrix[2][k] = diag[2][k] - LUMatrix[0][k] * gamma[TB][bli][bli];
   }
 
-  int gi = 1;
-  for(int r = 1; r < TB; r++){
-    for(int k = 1; k <= TB; k++){
-      LUMatrix[4][gi] = gamma[r][k];
-      gi++;
-    }
-  }
+  // int gi = 1;
+  // for(int r = 1; r < TB; r++){
+  //   for(int k = 1; k <= TB; k++){
+  //     LUMatrix[4][gi] = gamma[r][k];
+  //     gi++;
+  //   }
+  // }
 
   if(debug_const == 1)
     cout << "Passo 3: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
@@ -442,13 +449,37 @@ void FinVol()
   }
 
   // Passo 5.2
-  // xi = yi - Gi * x[i+1], i = n-1, n-2, ..., 1
-  for(int r = TB - 1; r >= 1; r--)
-  {
-    inicio = r*TB;
-    final  = (r-1)*TB + 1;
-    for(int k = inicio; k >= final; k--)
-      w[k] = z[r][k - final + 1] - gamma[r][k - final + 1] * w[k + TB];
+  // xi = yi - Gi * x[i+1], i = n-1, n-2, ..., 1 => i = r = 24, 23, ...
+  for(int r = TB - 1; r >= 1; r--) {
+    inicio = r * TB;
+    final = (r - 1) * TB + 1;
+    
+    for(int k = inicio; k >= final; k--) {
+        int gamma_index = k - final + 1; // Maps to 1..TB
+        double sum = 0.0;
+        
+        // Ensure inicio + i <= DMR
+        for(int i = 1; i <= TB; i++) {
+            if (inicio + i > DMR) {
+                cerr << "Index out of bounds: " << inicio + i << endl;
+                exit(1);
+            }
+            sum += gamma[r][gamma_index][i] * w[inicio + i];
+        }
+        
+        w[k] = z[r][gamma_index] - sum;
+    }
+  }
+
+  // After computing w[k], check symmetry
+  for (int i = 1; i <= M; i++) {
+      for (int j = 1; j <= N; j++) {
+          int k = i + (j - 1)*M;
+          int k_sym = (M - i + 1) + (j - 1)*M; // Symmetric index
+          if (abs(w[k] - w[k_sym]) > 1e-6) {
+              cerr << "Asymmetry detected at (" << i << "," << j << ")" << endl;
+          }
+      }
   }
 
 
@@ -509,25 +540,25 @@ void FinVol()
   // cout << fixed << setprecision(1);
   // cout << "N S O L C" << endl;
   for (int i = 1; i <= DMR; i++){
-    cout << i << " ";
-    cout << LUMatrix[0][i] << " ";
-    cout << LUMatrix[1][i] << " ";
-    cout << LUMatrix[2][i] << " ";
-    cout << LUMatrix[3][i] << " ";
-    cout << LUMatrix[4][i] << " ";
-    cout << w[i]           << endl;
+    // cout << i << " ";
+    // cout << LUMatrix[0][i] << " ";
+    // cout << LUMatrix[1][i] << " ";
+    // cout << LUMatrix[2][i] << " ";
+    // cout << LUMatrix[3][i] << " ";
+    // cout << LUMatrix[4][i] << " ";
+    // cout << w[i]           << endl;
     somaErro += abs(w[i] - valor_real[i]);
   }
-  cout << "====================\nr k gi" << endl;
-
-  gi = 1;
-  for(int r = 1; r <= TB; r++){
-    for(int k = 1; k <= TB; k++){
-      cout << r << " " << k << " " << gi << " ";
-      cout << gamma[r][k] << " " << z[r][k] << endl;
-      gi++;
-    }
-  }
+  // cout << setprecision(1);
+  // for(int i = 1; i <= 25; i++){
+  //   for(int j = 1; j <= 25; j++){
+  //     cout << i << " " << j << "|";
+  //     for(int k = 1; k <= 25; k++){
+  //       cout << gamma[i][j][k] << " ";
+  //     }
+  //     cout << endl;
+  //   }
+  // }
 
   for(int i = 1; i <= M; i++){
     for(int j = 1; j <= N; j++){
@@ -556,12 +587,16 @@ void FinVol()
   delete[] diag;
   delete[] LUMatrix;
 
-  for (int i = 1; i <= TB; i++) {
-    delete[] gamma[i];
+  for (int i = 1; i <= TB; i++)
     delete[] z[i];
+  delete[] z;
+
+  for (int i = 0; i <= TB; i++) {
+    for (int j = 0; j <= TB; j++)
+        delete[] gamma[i][j];
+    delete[] gamma[i];
   }
   delete[] gamma;
-  delete[] z;
 
   for (int i = 0; i < 4; i++)
     delete[] campoVel[i];
