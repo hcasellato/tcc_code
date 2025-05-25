@@ -63,7 +63,7 @@ def plot_heatmaps(df, output_path="comparacao_heatmaps.png"):
         ax[1].set_title('Numerical Solution')
         ax[1].set_xlabel('X Coordinate')
 
-        sns.heatmap(pivot_diff, ax=ax[2], cmap='coolwarm', center=0)
+        sns.heatmap(pivot_diff, ax=ax[2], cmap='coolwarm', vmin=-1, vmax=1)
         ax[2].set_title('Difference')
         ax[2].set_xlabel('X Coordinate')
 

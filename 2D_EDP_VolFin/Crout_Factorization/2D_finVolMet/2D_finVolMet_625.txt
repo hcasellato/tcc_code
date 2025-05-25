@@ -1,5 +1,5 @@
 Tabela de valores para implementação com 625 subintervalos
-Tempo de execução = 0.000193000000 seg.
+Tempo de execução = 0.000195000000 seg.
 
 x;y;f(x,y);exact_solution;difference;Vx;Vy;VxE;VyE
 0.020000000000;0.020000000000;0.164434035827;0.984291580564;0.819857544738;-0.501094485356;-0.027471128307;0.773083249726;0.773083249726

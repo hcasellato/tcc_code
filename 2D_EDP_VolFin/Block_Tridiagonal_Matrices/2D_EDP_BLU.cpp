@@ -202,7 +202,7 @@ void FinVol()
   double valor_real[DMR+1];   // Vetor de valores reais da solução
   
   // RESPOSTA!
-  double w[DMR + 2];
+  double w[DMR + 1];
   
   // Específico
   double Kx[DMR + 2];
@@ -536,9 +536,6 @@ void FinVol()
   file << "Tempo de execução = " << Tempo_TOTAL << " seg.\n\n";
   file << "x;y;f(x,y);exact_solution;difference;Vx;Vy;VxE;VyE" << endl;
 
-  //int somaKappa = 0;
-  // cout << fixed << setprecision(1);
-  // cout << "N S O L C" << endl;
   for (int i = 1; i <= DMR; i++){
     // cout << i << " ";
     // cout << LUMatrix[0][i] << " ";
@@ -549,16 +546,6 @@ void FinVol()
     // cout << w[i]           << endl;
     somaErro += abs(w[i] - valor_real[i]);
   }
-  // cout << setprecision(1);
-  // for(int i = 1; i <= 25; i++){
-  //   for(int j = 1; j <= 25; j++){
-  //     cout << i << " " << j << "|";
-  //     for(int k = 1; k <= 25; k++){
-  //       cout << gamma[i][j][k] << " ";
-  //     }
-  //     cout << endl;
-  //   }
-  // }
 
   for(int i = 1; i <= M; i++){
     for(int j = 1; j <= N; j++){
@@ -577,7 +564,6 @@ void FinVol()
 
   file.close();
   cout << "(" << DMR << ") Erro médio: " << somaErro / DMR << " em " << Tempo_TOTAL << "s" << endl;
-  //cout << somaKappa / DMR << endl;
 
   for(int i = 0; i < 5; i++)
   {
