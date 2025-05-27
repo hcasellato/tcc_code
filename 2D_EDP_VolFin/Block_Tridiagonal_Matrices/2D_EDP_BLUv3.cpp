@@ -59,7 +59,7 @@ double K_function(double x) {
 }
 
 int test_x = 1;
-int test_y = 1;
+int test_y = 0;
 
 double q(double x, double y) {
   return (4.0 * test_x + 4.0 * test_y) * PI2 * cos(2.0 * PI * x * test_x) * cos(2.0 * PI * y * test_y);
@@ -90,9 +90,9 @@ double exact_solution(double x, double y) {
 */
 void Copy_A_to_Atil(double **A, double **Atil, int block_index){
   int TB    = 25;
-  int start = (block_index - 1) * TB;
+  int start = (block_index - 1) * TB; // DMR - TB = 600
 
-  Atil[1][1] = A[2][start + 1];
+  Atil[1][1] = A[2][start + 1]; // 601
   Atil[1][2] = A[3][start + 1];
 
   for(int i = 2; i < TB; i++){
@@ -101,53 +101,126 @@ void Copy_A_to_Atil(double **A, double **Atil, int block_index){
     Atil[i][i+1] = A[3][start + i];
   }
 
-  Atil[TB][TB-1] = A[1][start + TB];
+  Atil[TB][TB-1] = A[1][start + TB]; // 625
   Atil[TB][TB]   = A[2][start + TB];
 
 }
 
-// Decompõe e resolve matrizes tridiagonais por decomposição LU
+// Resolve sistemas lineares por decomposição LU
 // Dx = f => L(Ux) = f => Lz = f => Ux = z
 /*
   INPUT:
     Matriz  D[0..TB]
     Vetor   F[0..TB]
     Vetor   X[0..TB]
+
+  Pelo que eu entendi, pelo teorema 6 (I, p.61), pos-
+  so fazer decomposição LU de Ã sem pivotamento.
+
+  O código abaixo é a fatoração LU do livro de Análi-
+  se Numérica do Burden, p. 450, algoritmo 6.4.
+
+  I: Analysis of Numerical Methods, Isaacson e Keller
 */
 void LU_solve(double **D, double* X, double* F){
   int TB = 25;
+  double sum;
 
-  double* l = new double[TB + 1];
-  double* u = new double[TB + 1];
-  double* z = new double[TB + 1];
+  double* z = new double[TB+1];
 
-  // Passo 1.1 >> Decomposição LU
-  l[1] = D[1][1];
-  u[1] = D[1][2] / l[1];
-  z[1] = F[1]    / l[1];
-  
-  // Passo 1.2
-  for(int i = 2; i < TB; i++)
-  {
-    l[i] = D[i][i] - (D[i][i-1] * u[i-1]);
-    u[i] = D[i][i+1] / l[i];
-    z[i] = (F[i] - (D[i][i-1] * z[i-1])) / l[i];
+  // Passo 0 >> Fazer matrizes L e U
+  double** L = new double*[TB + 1];
+  double** U = new double*[TB + 1];
+  for(int i = 0; i <= TB; i++){
+    L[i] = new double[TB+1];
+    U[i] = new double[TB+1];
+    for(int j = 1; j <= TB; j++){
+      L[i][j] = 0.0;
+      U[i][j] = 0.0;
+    }
+    U[i][i] = 1.0; // diagonal = 1
   }
 
-  // Passo 1.3
-  l[TB] = D[TB][TB] - (D[TB][TB-1] * u[TB-1]);
-  z[TB] = (F[TB]   - (D[TB][TB-1] * z[TB-1])) / l[TB];
-  
-  // Passo 2.1 >> Passos para 'backward substitution'
+  // Passo 1
+  L[1][1] = D[1][1];
+
+  for (int j = 1; j <= TB; j++) {
+    // Calculate column j of L
+      for (int i = j; i <= TB; i++) {
+        sum = 0.0;
+        for (int k = 1; k < j; k++) {
+          sum += L[i][k] * U[k][j];
+        }
+      L[i][j] = D[i][j] - sum;
+    }
+    if (L[j][j] == 0.0) {
+      throw runtime_error("Error: Singular matrix encountered in LU_solve. Division by zero.");
+    }
+    
+    // Calculate row j of U
+    for (int i = j + 1; i <= TB; i++) {
+      sum = 0.0;
+      for (int k = 1; k < j; k++) {
+        sum += L[j][k] * U[k][i];
+      }
+      U[j][i] = (D[j][i] - sum) / L[j][j];
+    }
+  }
+
+  // Passo 7.1 >> Solucionar Lz = F
+  z[1] = F[1] / L[1][1];
+
+  // Passo 7.2
+  for(int i = 2; i <= TB; i++){
+    sum = 0.0;
+    for(int j = 1; j <= i - 1; j++)
+      sum += L[i][j] * z[j];
+    z[i] = (F[i] - sum)/L[i][i];
+  }
+
+  // Passo 9.1 >> Substituição regressiva
   X[TB] = z[TB];
 
-  // Passo 2.2
-  for(int i = TB - 1; i >= 1; i--)
-    X[i] = z[i] - u[i] * X[i+1];
+  // Passo 9.2
+  for(int i = TB - 1; i >= 1; i--){
+    sum = 0.0;
+    for(int j = i+1; j <= TB; j++)
+      sum += U[i][j] * X[j];
+    X[i] = (z[i] - sum);
+  }
 
-  delete[] l;
-  delete[] u;
+  // Cleanup memory
   delete[] z;
+  for (int i = 0; i <= TB; i++) {
+    delete[] L[i];
+    delete[] U[i];
+  }
+  delete[] L;
+  delete[] U;
+}
+
+
+// ====================== NEW FUNCTION TO RECONSTRUCT MATRIX A FROM DIAGONALS
+double** Reconstruct_A(double** diag, int DMR, int TB) {
+    double** A = new double*[DMR + 1];
+    for (int i = 0; i <= DMR; i++) {
+        A[i] = new double[DMR + 1];
+        for (int j = 0; j <= DMR; j++) A[i][j] = 0.0;
+    }
+
+    for (int i = 1; i <= DMR; i++) {
+        // Lower diagonal (y-direction)
+        if (i > TB) A[i][i - TB] = diag[0][i];
+        // Lower diagonal (x-direction)
+        if (i > 1) A[i][i - 1] = diag[1][i];
+        // Main diagonal
+        A[i][i] = diag[2][i];
+        // Upper diagonal (x-direction)
+        if (i < DMR) A[i][i + 1] = diag[3][i];
+        // Upper diagonal (y-direction)
+        if (i <= DMR - TB) A[i][i + TB] = diag[4][i];
+    }
+    return A;
 }
 
 void FinVol(int debug_const)
@@ -240,8 +313,8 @@ void FinVol(int debug_const)
     for(int j = 1; j <= N; j++){
       k = i + (j - 1)*M;
 
-      Kx[k] = K_function(Al + (i - 0.5) * hx);
-      Ky[k] = K_function(Ga + (j - 0.5) * hy);
+      Kx[k] = 1.0;
+      Ky[k] = 1.0;
 
       // Passo 1.2 >> Vetor 'd' e das soluções exatas 
       d[k]          = q(Al + (i - 0.5) * hx, Ga + (j - 0.5) * hy);
@@ -259,16 +332,27 @@ void FinVol(int debug_const)
       k = i + (j - 1)*M;
 
       // Passo 2.1 >> Diagonais exteriores (y-direction)
-      diag[0][k] = (j > 1) ? -K_half(Ky[k], Ky[k - M]) / hy2 : 0.0;
-      diag[4][k] = (j < N) ? -K_half(Ky[k], Ky[k + M]) / hy2 : 0.0; // Fixed M to N
+      diag[0][k] = (j > 1) ? -1.0 / hy2 : 0.0;
+      diag[4][k] = (j < N) ? -1.0 / hy2 : 0.0; 
 
       // Passo 2.2 >> Diagonais internas (x-direction)
-      diag[1][k] = (i > 1) ? -K_half(Kx[k], Kx[k - 1]) / hx2 : 0.0;
-      diag[3][k] = (i < M) ? -K_half(Kx[k], Kx[k + 1]) / hx2 : 0.0;
+      diag[1][k] = (i > 1) ? -1.0 / hx2 : 0.0;
+      diag[3][k] = (i < M) ? -1.0 / hx2 : 0.0;
 
       // Passo 2.3 >> Diagonal Central
       diag[2][k] = - diag[0][k] - diag[1][k] - diag[3][k] - diag[4][k];
     }
+  }
+
+  if(debug_const == 1){
+    if(fabs(diag[2][1]) <= fabs(diag[3][1]))
+      cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+    for(int k = 1; k < DMR; k++){
+      if(fabs(diag[2][k]) < fabs(diag[1][k]) + fabs(diag[3][k]))
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+    }
+    if(fabs(diag[2][DMR]) <= fabs(diag[1][DMR]))
+      cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
   }
 
   if(debug_const == 1)
@@ -323,7 +407,28 @@ void FinVol(int debug_const)
   - B   [TB][TB][TB] -> TB blocos de TBxTB elementos
   - Atil[TB][TB][TB] -> ""
   - G   [TB][TB][TB] -> ""
+
+  - C   [TB][TB]     -> TBxTB elementos
+  - Z   [TB][TB]     -> ""
+
+  Para debug, vou criar matrizes Matrix, L e U de veri-
+  ficação da Fatoração LU em bloco.
   */
+
+  // DEBUG
+  double**  Matrix = new double*[DMR+1];
+  double**  L      = new double*[DMR+1];
+  double**  U      = new double*[DMR+1];
+  for(int i = 0; i <= DMR; i++){
+    Matrix[i] = new double[DMR+1];
+    L[i]      = new double[DMR+1];
+    U[i]      = new double[DMR+1];
+    for(int j = 0; j <= DMR; j++){
+      Matrix[i][j] = 0.0;
+      L[i][j]      = 0.0;
+      U[i][j]      = 0.0;
+    }
+  }
 
   // Passo 3 >> fazendo as matrizes
   double*** Atil = new double**[TB+1];
@@ -333,8 +438,10 @@ void FinVol(int debug_const)
   double**  C    = new double*[TB+1];
   double**  Z    = new double*[TB+1];
 
-  double**  b_d  = new double*[TB+1];
-  double**  b_w  = new double*[TB+1];
+  double**  b_d  = new double*[TB+1]; // bloco de d
+  double**  b_w  = new double*[TB+1]; // bloco de w
+
+  double*   b_i  = new double[TB+1]; // vetor intermediario
 
   // Alocando número de blocos
   for(int i = 0; i <= TB; i++){
@@ -342,7 +449,8 @@ void FinVol(int debug_const)
     G[i]    = new double*[TB+1];
     B[i]    = new double*[TB+1];
 
-    C[i]    = new double[TB+1]; // Alocando linhas
+    // Alocando linhas
+    C[i]    = new double[TB+1];
     Z[i]    = new double[TB+1];
     
     b_d[i]  = new double[TB+1];
@@ -354,7 +462,8 @@ void FinVol(int debug_const)
       G[i][j]    = new double[TB+1];
       B[i][j]    = new double[TB+1];
       
-      C[i][j]    = 0.0; // Inicializando colunas
+      // Inicializando colunas
+      C[i][j]    = 0.0;
       Z[i][j]    = 0.0;
       
       b_d[i][j]  = 0.0;
@@ -373,7 +482,6 @@ void FinVol(int debug_const)
   Copy_A_to_Atil(diag, Atil[1], 1);
 
   // Passo 3.1.2 >> Ã1 * G1 = C1 => G1
-
   for(int i = 1; i <= TB; i++){
     // Pré: fazer C1 (vou ter q fazer isso sempre)
     C[i][i] = diag[4][i];
@@ -405,7 +513,7 @@ void FinVol(int debug_const)
   }
 
   // Passo 3.2.2 >> Ãn = An - Bn * G[n-1], i = n
-  int bli = DMR-TB;
+  int bli = (TB-1)*TB;
 
   Copy_A_to_Atil(diag, Atil[TB], TB);
 
@@ -415,45 +523,64 @@ void FinVol(int debug_const)
     }
   }
 
-  // Debug
-  if(debug_const == 1){
-    cout << fixed << setprecision(1);
-    for(int i = 1; i <= TB; i++){
-      for (int j = 1; j <= TB; j++)
-        cout << C[i][j] << " ";
-      cout << endl;
-    }
-  }
-
   if(debug_const == 1)
     cout << "Passo 3: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
   inter_time = clock();
 
-  // Pré: fazer bloco de d1
-  for(int j = 1; j <= TB; j++)
-    b_d[1][j] = d[j];
+  // Pré: fazer bloco de d
+  for(int b = 1; b <= TB; b++){
+    int bli = (b-1)*TB;
+    for(int j = 1; j <= TB; j++)
+      b_d[b][j] = d[bli + j];
+  }
 
   // Passo 4.1 >> Ã1 * z1 = d1 => z1
   LU_solve(Atil[1], Z[1], b_d[1]);
 
   // Passo 4.2 >> Ãi * zi = di - Bi * z[i-1] => zi, i = 2, 3, ..., n
   for(int b = 2; b <= TB; b++){
+    if(debug_const == 1){
+      cout << fixed << setprecision(12);
+      cout << "b" << b << ": ";
+    }
+
     int bli = (b-1)*TB;
-
     // Fazendo di - Bi * z[i-1]
-    for(int j = 1; j <= TB; j++)
-      b_d[b][j] = d[bli+j] - diag[0][bli+j] * Z[b-1][j];
+    for(int j = 1; j <= TB; j++){
+      b_i[j] = b_d[b][j] - diag[0][bli+j] * Z[b-1][j];
+      if(debug_const == 1) cout << b_i[j] << " ";
+    }
+    if(debug_const == 1) cout << endl;
 
-    // Resolvendo Ãi * zi = di - Bi * z[i-1]
-    LU_solve(Atil[b], Z[b], b_d[b]);
+    // Resolvendo Ãi * zi = bi = di - Bi * z[i-1]
+    LU_solve(Atil[b], Z[b], b_i);
   }
 
   if(debug_const == 1){
     cout << fixed << setprecision(1);
-    cout << "Z: ";
-    for (int j = 1; j <= TB; j++)
-      cout << Z[25][j] << " ";
-    cout << endl;
+    int bli = (TB-1)*TB;
+
+    for(int i = 1; i <= TB; i++){
+      cout << i << " ";
+      cout << diag[0][i] << " ";
+      cout << diag[1][i] << " ";
+      cout << diag[2][i] << " ";
+      cout << diag[3][i] << " ";
+      cout << diag[4][i] << endl;
+    }
+  }
+  
+
+  if(debug_const == 1){
+    cout << fixed << setprecision(4);
+    
+    for(int b = 1; b <= TB; b++){
+      cout << "Z" << b <<": ";
+      for (int j = 1; j <= TB; j++)
+        cout << Z[b][j] << " ";
+      cout << endl;
+
+    }
   }
 
   if(debug_const == 1)
@@ -467,22 +594,43 @@ void FinVol(int debug_const)
   // Passo 5.2 >> xi = zi - Gi * x[i+1],     i = n-1, n-2, ..., 1
   for(int b = TB-1; b >= 1; b--){
     for(int i = 1; i <= TB; i++){
-    // Calcular Gi * x[i+1]
-    double sum = 0.0;
-    for(int j = 1; j <= TB; j++)
-      sum += G[b][i][j] * b_w[b+1][j];
+      // Calcular Gi * x[i+1]
+      double sum = 0.0;
+      for(int j = 1; j <= TB; j++)
+        sum += G[b][i][j] * b_w[b+1][j];
 
-    // xi = zi - Gi * x[i+1]
-    b_w[b][i] = Z[b][i] - sum;
+      // xi = zi - Gi * x[i+1]
+      b_w[b][i] = Z[b][i] - sum;
     }
   }
 
   if(debug_const == 1){
     cout << fixed << setprecision(1);
-    cout << "W: ";
-    for (int j = 1; j <= TB; j++)
-      cout << b_w[12][j] << " ";
-    cout << endl;
+    for(int b = 1; b <= TB; b++){
+      cout << "W" << b <<": ";
+      for (int j = 1; j <= TB; j++)
+        cout << b_w[b][j] << " ";
+      cout << endl;
+    }
+  }
+
+  if(debug_const == 1){
+    cout << fixed << setprecision(1);
+    for(int b = 1; b <= TB; b++){
+      cout << "d" << b <<": ";
+      for (int j = 1; j <= TB; j++)
+        cout << b_d[b][j] << " ";
+      cout << endl;
+    }
+  }
+
+  if(debug_const == 1){
+    cout << fixed << setprecision(10);
+    for(int i = 1; i <= TB; i++){
+      for(int j = 1; j <= TB; j++)
+        cout << Atil[25][i][j] << " ";
+      cout << endl;
+    }
   }
 
   // Passo 5.3 >> Transformar block_w to w:
@@ -515,8 +663,8 @@ void FinVol(int debug_const)
   file << fixed << setprecision(12);
   for(int i = 1; i <= M; i++){
     for(int j = 1; j <= N; j++){
-      k = i + (j - 1)*M;
-      file << Al + (i - 0.5) * hx   << ";";
+      k = i + (j - 1)*M;                                      // Erro aqui?                   <=======================
+      file << Al + (i - 0.5) * hx  << ";";
       file << Ga + (j - 0.5) * hy  << ";";
       file << w[k]                 << ";";
       file << valor_real[k]        << ";";
@@ -531,7 +679,114 @@ void FinVol(int debug_const)
   file.close();
   cout << "(" << DMR << ") Erro médio: " << somaErro / DMR << " em " << Tempo_TOTAL << "s" << endl;
 
+  // ============================| DEBUG
+  /*
+  [ 2 3 .   4 . .   . . . ]   [      |      |      ]
+  [ 1 2 3   . 4 .   . . . ]   [  A1  |  C1  |      ]
+  [ . 1 2   . . 4   . . . ]   [      |      |      ]
+
+  [ 0 . .   2 3 .   4 . . ]   [      |      |      ]
+  [ . 0 .   1 2 3   . 4 . ] = [  B2  |  A2  |  C2  ] = A
+  [ . . 0   . 1 2   . . 4 ]   [      |      |      ]
+           
+  [ . . .   0 . .   2 3 . ]   [      |      |      ]
+  [ . . .   . 0 .   1 2 3 ]   [      |  B3  |  A3  ]
+  [ . . .   . . 0   . 1 2 ]   [      |      |      ]
+
+  [ Ã1       ] [ I1 G1    ]
+  [ B2 Ã2    ] [    I2 G2 ] = LU
+  [    B3 Ã3 ] [       I3 ]
+  */
+
+  // Passo D.1 >> L
+  // Ã1
+  for(int i = 1; i <= TB; i++){
+    for(int j = 1; j <= TB; j++)
+      L[i][j] = Atil[1][i][j];
+  }
+
+  // Ãb
+  for(int b = 2; b <= TB; b++){
+    int bli = (b-1)*TB;
+
+    for(int i = 1; i <= TB; i++){
+      for(int j = 1; j <= TB; j++)
+        L[bli + i][bli + j] = Atil[b][i][j];
+    }
+  }
+
+  // Populate B_i blocks in L (lower block diagonal)
+  for (int b = 2; b <= TB; b++) {
+    int row_start = (b - 1) * TB + 1;
+    int col_start = (b - 2) * TB + 1;
+    for (int i = 1; i <= TB; i++) {
+      L[row_start + i - 1][col_start + i - 1] = diag[0][row_start + i - 1];
+    }
+  }
+
+  // Passo D.2 >> U
+  // Ii
+  for(int i = 1; i <= DMR; i++)
+    U[i][i] = 1.0;
+
+  // Gi
+  for (int b = 1; b < TB; b++) {
+    int bli1 = b * TB;      // Start index of the next block
+    int bli2 = (b - 1) * TB; // Start index of the current block
+    for (int i = 1; i <= TB; i++) {
+      for (int j = 1; j <= TB; j++) {
+        U[bli2 + i][bli1 + j] = G[b][i][j]; // G placed in upper off-diagonal
+      }
+    }
+  }
+
+  // Passo D.3 >> Compute M = L * U with proper matrix multiplication
+  for (int i = 1; i <= DMR; i++) {
+    for (int j = 1; j <= DMR; j++) {
+      Matrix[i][j] = 0.0;
+      for (int k = 1; k <= DMR; k++) {
+        Matrix[i][j] += L[i][k] * U[k][j];
+      }
+    }
+  }
+
+  // ====================== VALIDATION: Compare M with original A ======================
+  double** A_original = Reconstruct_A(diag, DMR, TB);
+  double max_error = 0.0;
+  for (int i = 1; i <= DMR; i++) {
+      for (int j = 1; j <= DMR; j++) {
+          double diff = fabs(Matrix[i][j] - A_original[i][j]);
+          if (diff > max_error) max_error = diff;
+      }
+  }
+  cout << "VALIDATION: Max error between M (L*U) and A: " << scientific << max_error << endl;
+
+  // Impressão dos Valores
+  // Por favor, crie a pasta antes!
+  ofstream debug_file;
+  string name_debug_file = "2D_finVolMet_BLU/debugMatrix.txt";
+
+  debug_file.open(name_debug_file);
+
+  debug_file << "x;y;M;L;U" << endl;
+
+  debug_file << fixed << setprecision(12);
+  for(int i = 1; i <= DMR; i++){
+    for(int j = 1; j <= DMR; j++){
+      debug_file << i            << ";";
+      debug_file << j            << ";";
+      debug_file << Matrix[i][j] << ";";
+      debug_file << L[i][j]      << ";";
+      debug_file << U[i][j]      << endl;
+    }
+  }
+
   // ============================| Cleanup
+
+  // Cleanup A_original
+  for (int i = 0; i <= DMR; i++) delete[] A_original[i];
+  delete[] A_original;
+
   // Cleanup diag array
   for(int i = 0; i < 5; i++)
       delete[] diag[i];
@@ -572,6 +827,16 @@ void FinVol(int debug_const)
   delete[] Z;
   delete[] b_d;
   delete[] b_w;
+  delete[] b_i;
+
+  for(int i = 0; i <= DMR; i++){
+    delete[] Matrix[i];
+    delete[] L[i];
+    delete[] U[i];
+  }
+  delete[] Matrix;
+  delete[] L;  
+  delete[] U;
 
   if(debug_const == 1)
     cout << "Cleanup complete" << endl;
@@ -581,7 +846,7 @@ int main()
 {
   cout << "Versão 3 da Fatoração LU em Bloco" << endl;
   cout << fixed << setprecision(12);
-  FinVol(0);
+  FinVol(1);
 
   return 0;
 }

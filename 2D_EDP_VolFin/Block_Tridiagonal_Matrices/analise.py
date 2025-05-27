@@ -54,16 +54,16 @@ def plot_heatmaps(df, output_path="comparacao_heatmaps.png"):
         fig.suptitle("Scalar Field Comparison", y=0.95)
         
         # Plot heatmaps
-        sns.heatmap(pivot_real, ax=ax[0], cmap='viridis', vmin=-1, vmax=1)
+        sns.heatmap(pivot_real, ax=ax[0], cmap='viridis')#, vmin=-1, vmax=1)
         ax[0].set_title('Exact Solution')
         ax[0].set_xlabel('X Coordinate')
         ax[0].set_ylabel('Y Coordinate')
 
-        sns.heatmap(pivot_test, ax=ax[1], cmap='viridis', vmin=-1, vmax=1)
+        sns.heatmap(pivot_test, ax=ax[1], cmap='viridis')#, vmin=-1, vmax=1)
         ax[1].set_title('Numerical Solution')
         ax[1].set_xlabel('X Coordinate')
 
-        sns.heatmap(pivot_diff, ax=ax[2], cmap='coolwarm', vmin=-1, vmax=1)
+        sns.heatmap(pivot_diff, ax=ax[2], cmap='coolwarm')#, vmin=-1, vmax=1)
         ax[2].set_title('Difference')
         ax[2].set_xlabel('X Coordinate')
 
