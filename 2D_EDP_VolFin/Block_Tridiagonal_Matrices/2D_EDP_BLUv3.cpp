@@ -59,7 +59,7 @@ double K_function(double x) {
 }
 
 int test_x = 1;
-int test_y = 0;
+int test_y = 1;
 
 double q(double x, double y) {
   return (4.0 * test_x + 4.0 * test_y) * PI2 * cos(2.0 * PI * x * test_x) * cos(2.0 * PI * y * test_y);

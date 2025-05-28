@@ -54,12 +54,12 @@ def plot_heatmaps(df, output_path="comparacao_heatmaps.png"):
         fig.suptitle("Scalar Field Comparison", y=0.95)
         
         # Plot heatmaps
-        sns.heatmap(pivot_real, ax=ax[0], cmap='viridis')#, vmin=-1, vmax=1)
+        sns.heatmap(pivot_real, ax=ax[0], cmap='viridis', vmin=-1, vmax=1)
         ax[0].set_title('Exact Solution')
         ax[0].set_xlabel('X Coordinate')
         ax[0].set_ylabel('Y Coordinate')
 
-        sns.heatmap(pivot_test, ax=ax[1], cmap='viridis')#, vmin=-1, vmax=1)
+        sns.heatmap(pivot_test, ax=ax[1], cmap='viridis', vmin=-1, vmax=1)
         ax[1].set_title('Numerical Solution')
         ax[1].set_xlabel('X Coordinate')
 
@@ -129,7 +129,7 @@ def plot_vector_fields(df, output_path="comparacao_campos_vetoriais.png"):
 if __name__ == "__main__":
     try:
         # Load data
-        df = load_data("2D_finVolMet_BLU/2D_finVolMet_BLUv3_625.txt")
+        df = load_data("2D_finVolMet_BLU/2D_finVolMet_BLUv4_625.txt")
         
         # Generate visualizations
         plot_heatmaps(df)
