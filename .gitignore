@@ -30,3 +30,34 @@
 *.exe
 *.out
 *.app
+
+### Python ###
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+pyvenv.cfg
+
+### Build Directories ###
+bin/
+lib/
+lib64/
+build/
+dist/
+*.egg-info/
+*.egg
+
+### Virtual Environments ###
+venv/
+env/
+.venv/
+.env/
+
+### IDE ###
+*.sublime-project
+*.sublime-workspace
+
+### System Files ###
+.DS_Store
+Thumbs.db
