@@ -3,8 +3,8 @@
 // Tenta a implementação de Block LU factorization para matrizes em bloco tridiagonais para os problemas bidimen-
 // sionais do livro de Volumes Finitos. Consultar ANALYSIS OF NUMERICAL METHODS, Isaacson e Keller.
 // 
-// Agora o problema é a condição de neumann que dá uma solução up to a constant. Agora vou mudar para a condição
-// de contorno de Dirichlet que deve eliminar esse problema.
+// Agora o problema é a condição de neumann que dá uma solução up to a constant. Agora vou mudar para uma condi-
+// ção local dirichlet
 //
 // Problemas da forma: 
 //
@@ -853,7 +853,7 @@ void FinVol(int debug_const)
 
 int main()
 {
-  cout << "Versão 3 da Fatoração LU em Bloco" << endl;
+  cout << "Versão 4 da Fatoração LU em Bloco" << endl;
   cout << fixed << setprecision(12);
   FinVol(0);
 

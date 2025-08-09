@@ -179,7 +179,7 @@ int main()
   for (int i = 0; i <= N+1; i++)
   {
     valor_real = exact_solution(A + i*h);
-    cout << A + i*h << " | " << w[i] << " | " << valor_real << " | " << abs(w[i] - valor_real) << endl;
+    cout << A + i*h << " ; " << w[i] << " ; " << valor_real << " ; " << abs(w[i] - valor_real) << endl;
   }
   return 0;
 }

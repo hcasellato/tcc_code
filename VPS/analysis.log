@@ -1,0 +1,46 @@
+2025-07-09 18:18:11,756 - INFO - Loading data from VPS_db/VPS_FVM_625.txt
+2025-07-09 18:18:11,758 - INFO - Successfully loaded data with shape (625, 9)
+2025-07-09 18:18:11,759 - INFO - Generating heatmap comparison
+2025-07-09 18:18:14,320 - INFO - Heatmaps saved to results/heatmap_comparison.png
+2025-07-09 18:18:14,320 - INFO - Generating vector field comparison
+2025-07-09 18:18:14,421 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:18:14,447 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:18:14,514 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:18:14,515 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:18:15,167 - INFO - Vector fields saved to results/vector_field_comparison.png
+2025-07-09 18:18:15,167 - INFO - Analysis completed successfully
+2025-07-09 18:19:44,868 - INFO - Loading data from VPS_db/VPS_FVM_625.txt
+2025-07-09 18:19:44,871 - INFO - Successfully loaded data with shape (625, 9)
+2025-07-09 18:19:44,871 - INFO - Generating heatmap comparison
+2025-07-09 18:19:47,059 - INFO - Heatmaps saved to results/heatmap_comparison.png
+2025-07-09 18:19:47,059 - INFO - Generating vector field comparison
+2025-07-09 18:19:47,152 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:19:47,182 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:19:47,248 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:19:47,248 - WARNING - Ignoring fixed x limits to fulfill fixed data aspect with adjustable data limits.
+2025-07-09 18:19:48,571 - INFO - Vector fields saved to results/vector_field_comparison.png
+2025-07-09 18:19:48,571 - INFO - Analysis completed successfully
+2025-07-09 18:21:39,560 - INFO - Loading data from VPS_db/VPS_FVM_625.txt
+2025-07-09 18:21:39,565 - INFO - Successfully loaded data with shape (625, 9)
+2025-07-09 18:21:39,565 - INFO - Generating heatmap comparison
+2025-07-09 18:21:41,795 - INFO - Heatmaps saved to results/heatmap_comparison.png
+2025-07-09 18:21:41,795 - INFO - Generating vector field comparison with improved scaling
+2025-07-09 18:21:41,903 - INFO - Using auto-calculated scale factor: 0.00
+2025-07-09 18:21:41,903 - ERROR - Vector field generation failed: name 'np' is not defined
+2025-07-09 18:21:41,903 - CRITICAL - Analysis failed: Vector field generation failed: name 'np' is not defined
+2025-07-09 18:22:48,574 - INFO - Loading data from VPS_db/VPS_FVM_625.txt
+2025-07-09 18:22:48,578 - INFO - Successfully loaded data with shape (625, 9)
+2025-07-09 18:22:48,578 - INFO - Generating heatmap comparison
+2025-07-09 18:22:50,833 - INFO - Heatmaps saved to results/heatmap_comparison.png
+2025-07-09 18:22:50,833 - INFO - Generating vector field comparison with improved scaling
+2025-07-09 18:22:50,942 - INFO - Using auto-calculated scale factor: 0.00
+2025-07-09 18:22:52,305 - INFO - Vector fields saved to results/vector_field_comparison.png
+2025-07-09 18:22:52,306 - INFO - Analysis completed successfully
+2025-07-09 18:25:38,400 - INFO - Loading data from VPS_db/VPS_FVM_625.txt
+2025-07-09 18:25:38,403 - INFO - Successfully loaded data with shape (625, 9)
+2025-07-09 18:25:38,403 - INFO - Generating heatmap comparison
+2025-07-09 18:25:40,605 - INFO - Heatmaps saved to results/heatmap_comparison.png
+2025-07-09 18:25:40,605 - INFO - Generating vector field comparison with improved scaling
+2025-07-09 18:25:40,708 - INFO - Using auto-calculated scale factor: 0.00
+2025-07-09 18:25:40,712 - ERROR - Vector field generation failed: 'NoneType' object has no attribute 'zorder'
+2025-07-09 18:25:40,712 - CRITICAL - Analysis failed: Vector field generation failed: 'NoneType' object has no attribute 'zorder'
