@@ -61,3 +61,8 @@ env/
 ### System Files ###
 .DS_Store
 Thumbs.db
+
+
+### Some other things?
+share/
+lib64/
