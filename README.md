@@ -4,4 +4,9 @@ Este é o código para o Trabalho de Conclusão de Curso apresentada ao Curso de
 
 ## Super-estrutura deste repositório:
 
-[1] - **PVC** - Problemas de valores de contorno.
+A numeração compreende o percurso temporal de implementação dos algorítimos com base nos estudos para o TCC. Segue as explicações:
+
+[1] - **PVC** - Problemas de valores de contorno;
+[2] - **EDP_ExBurden** - Código de exercício para implementação do Método de Diferenças Finitas usando Gauss-Seidel para equações elípticas;
+[3] - **1D_EDP_VolFin** - Implementação do Método de Volumes Finitos para problemas unidimensionais;
+[4] - **2D_EDP_VolFin** - Implementação do Método de Volumes Finitos para problemas bidimensionais;

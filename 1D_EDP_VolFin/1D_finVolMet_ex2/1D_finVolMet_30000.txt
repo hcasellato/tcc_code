@@ -1,5 +1,5 @@
 Tabela de valores para implementação com 30000 subintervalos
-Tempo de execução = 0.001717000000 seg.
+Tempo de execução = 0.002235000000 seg.
 
 x_i;w_i;y_i;|e_a|;
 0.000000000000;0.000000000000;0.000000000000;0.000000000000;
