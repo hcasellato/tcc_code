@@ -60,6 +60,11 @@ int TB = 25;
 //
 // =================================================================
 double K_function(double x, double y) {
+  if(x >= .42 && x <= .62){
+    if(y >= .42 && y <= 0.62){
+      return .2;
+    }
+  }
   return 1.0;
 }
 
@@ -78,7 +83,14 @@ double q(double x, double y) {
 
 // Funciona para ambos 'i' e 'j'
 double K_half(double K_1, double K_2) {
-  return 2 * (K_1 * K_2) / (K_1 + K_2);
+  // Se a soma for muito pequena (ambos são próximos de zero), a interface é impermeável.
+  if ( (K_1 + K_2) < 1e-9 ) {
+    return 0.0;
+  }
+  
+  // A fórmula padrão da média harmônica já lida corretamente com o caso
+  // em que apenas um dos valores é zero.
+  return 2.0 * (K_1 * K_2) / (K_1 + K_2);
 }
 
 // Função exata, se houver
@@ -252,6 +264,10 @@ void FinVol(int debug_const)
   double Khx = 0.0;
   double Khy = 0.0;
 
+  double** K_cell = new double*[M+1];
+  for(int i = 0; i <= M; i++)
+    K_cell[i] = new double[M+1];
+  
   // =================================================================
   // MATRIZES PARA O BLU
   double*** Atil = new double**[TB+1];
@@ -315,8 +331,12 @@ void FinVol(int debug_const)
     for(int j = 1; j <= N; j++){
       k = i + (j - 1)*M;
 
-      b_d[j][i]     = q(Al + (i - 0.5) * hx, Ga + (j - 0.5) * hy);
-      valor_real[k] = exact_solution(Al + (i - 0.5) * hx, Ga + (j - 0.5) * hy);
+      double x = Al + (i - 0.5) * hx;
+      double y = Ga + (j - 0.5) * hy;
+
+      K_cell[i][j]  = K_function(x, y);
+      b_d[i][j]     = q(x, y);
+      valor_real[k] = exact_solution(x, y);
     }
   }
 
@@ -325,27 +345,23 @@ void FinVol(int debug_const)
   inter_time = clock();
 
   // Passo 2 >> Montagem da Matriz
-  // Usa uma otimização de Khx e Khy já terem sido calculados
-  // Ou seja o "pra frente" desse é o "pra tras" do próximo
   for(int i = 1; i <= M; i++){
-    for (int j = 1; j <= N; j++){
+    for(int j = 1; j <= N; j++){
       k = i + (j - 1)*M;
-
-      // Passo 2.1
-      diag[4][k] = (j < N) ? Khy : 0.0;
-      diag[3][k] = (i < M) ? Khx : 0.0;
       
-
-      // Passo 2.2 >> Calcular Kh*
-      Khy = -K_half(K_function(i*hx,j*hy),K_function(i*hx,(j+1)*hy)) / hy2;
-      Khx = -K_half(K_function(i*hx,j*hy),K_function((i+1)*hx,j*hy)) / hx2;
+      double left, right, bottom, top;
       
-      diag[0][k] = (j > 1) ? Khy : 0.0;
-      diag[1][k] = (i > 1) ? Khx : 0.0;
+      // Calculate interface permeabilities using harmonic mean
+      left   = (i > 1) ? K_half(K_cell[i-1][j], K_cell[i][j]) / hx2 : 0.0;
+      right  = (i < M) ? K_half(K_cell[i+1][j], K_cell[i][j]) / hx2 : 0.0;
+      bottom = (j > 1) ? K_half(K_cell[i][j-1], K_cell[i][j]) / hy2 : 0.0;
+      top    = (j < N) ? K_half(K_cell[i][j+1], K_cell[i][j]) / hy2 : 0.0;
 
-      // Passo 2.3 >> Diagonal Central
-      diag[2][k] = - diag[0][k] - diag[1][k] - diag[3][k] - diag[4][k];
-
+      diag[0][k] = -bottom;    // bottom
+      diag[1][k] = -left;      // left
+      diag[3][k] = -right;     // right
+      diag[4][k] = -top;       // top
+      diag[2][k] = left + right + bottom + top;  // center
     }
   }
 
@@ -354,6 +370,10 @@ void FinVol(int debug_const)
   diag[4][1] = diag[3][1]     = 0.0; // Resto zerado
   b_d[1][1]  = 1.0;
   
+  diag[2][DMR] = 1.0;                  // Diagonal principal igual a 1
+  diag[0][DMR] = diag[1][DMR]     = 0.0; // Resto zerado
+  b_d[TB][TB]  = -1.0;
+
   if(debug_const == 1)
     cout << "Passo 2: " << (double)(clock() - inter_time)/CLOCKS_PER_SEC << endl;
   inter_time = clock();
@@ -520,6 +540,18 @@ void FinVol(int debug_const)
       w[bli+j] = b_w[i][j];
   }
 
+  // Passo 5.4 >> Fazer uma matriz de pressao
+  double** p = new double*[M+1];
+  for(int i = 0; i <= M; i++)
+    p[i] = new double[N+1];
+
+  for(int i = 1; i <= M; i++){
+    for(int j = 1; j<= N; j++){
+      k = i + (j - 1)*M;
+      p[i][j] = w[k];
+    }
+  }
+
   // Passo 6 >> Campo de Velocidades
   double** campoVel = new double*[4];
   for(int i = 0; i < 4; i++)
@@ -534,20 +566,20 @@ void FinVol(int debug_const)
       campoVel[2][k] = campoVel[3][k] = 0.0;
 
       // Passo 6.1
-      Khx = K_half(K_function((i-1)*hx,j*hy),K_function(i*hx,(j)*hy));
+      Khx = (i > 1) ? K_half(K_cell[i][j], K_cell[i-1][j]) : 0.0;
       campoVel[0][k] += (i > 1) ? -((Khx)* (w[k] - w[k-1])) / hx : 0.0;
       campoVel[2][k] += (i > 1) ? -((Khx) * (valor_real[k] - valor_real[k-1])) / hx : 0.0;
       
-      Khx = K_half(K_function((i+1)*hx,j*hy),K_function(i*hx,j*hy));
+      Khx = (i < M) ? K_half(K_cell[i][j], K_cell[i+1][j]) : 0.0;
       campoVel[0][k] += (i < M) ? -((Khx)* (w[k+1] - w[k])) / hx : 0.0;
       campoVel[2][k] += (i < M) ? -((Khx) * (valor_real[k+1] - valor_real[k])) / hx : 0.0;
 
       // Passo 6.2
-      Khy = K_half(K_function(i*hx,(j-1)*hy),K_function(i*hx,(j)*hy));
+      Khy = (j > 1) ? K_half(K_cell[i][j], K_cell[i][j-1]) : 0.0;
       campoVel[1][k] += (j > 1) ? -((Khy) * (w[k] - w[k-M])) / hy : 0.0;
       campoVel[3][k] += (j > 1) ? -((Khy) * (valor_real[k] - valor_real[k-M])) / hy : 0.0;
 
-      Khy = K_half(K_function(i*hx,(j+1)*hy),K_function(i*hx,j*hy));
+      Khy = (j < N) ? K_half(K_cell[i][j], K_cell[i][j+1]) : 0.0;
       campoVel[1][k] += (j < N) ? -((Khy) * (w[k+M] - w[k])) / hy : 0.0;
       campoVel[3][k] += (j < N) ? -((Khy) * (valor_real[k+M] - valor_real[k])) / hy : 0.0;
       
@@ -555,8 +587,6 @@ void FinVol(int debug_const)
       campoVel[1][k] /= 2.0;
       campoVel[2][k] /= 2.0;
       campoVel[3][k] /= 2.0;
-
-
     }
   }
 
@@ -574,7 +604,7 @@ void FinVol(int debug_const)
   file << "Tabela de valores para implementação com " << DMR << " subintervalos" << endl;
   file << fixed << setprecision(12);
   file << "Tempo de execução = " << Tempo_TOTAL << " seg.\n\n";
-  file << "x;y;f(x,y);exact_solution;difference;Vx;Vy;VxE;VyE" << endl;
+  file << "x;y;f(x,y);Vx;Vy" << endl;
 
   for (int i = 1; i <= DMR; i++)
     somaErro += abs(w[i] - valor_real[i]);
@@ -585,13 +615,9 @@ void FinVol(int debug_const)
       k = i + (j - 1)*M;
       file << Al + (i - 0.5) * hx  << ";";
       file << Ga + (j - 0.5) * hy  << ";";
-      file << w[k]                 << ";";
-      file << valor_real[k]        << ";";
-      file << valor_real[k] - w[k] << ";";
+      file << p[i][j]              << ";";
       file << campoVel[0][k]       << ";";
-      file << campoVel[1][k]       << ";";
-      file << campoVel[2][k]       << ";";
-      file << campoVel[3][k]       << endl;
+      file << campoVel[1][k]       << endl;
     }
   }
 
@@ -632,6 +658,7 @@ void FinVol(int debug_const)
     delete[] b_w[i];
     delete[] L[i];
     delete[] U[i];
+    delete[] K_cell[i];
   }
 
   for (int i = 0; i < 4; i++)
@@ -649,6 +676,7 @@ void FinVol(int debug_const)
   delete[] b_i;
   delete[] L;
   delete[] U;
+  delete[] K_cell;
 
   if(debug_const == 1)
     cout << "Cleanup complete" << endl;

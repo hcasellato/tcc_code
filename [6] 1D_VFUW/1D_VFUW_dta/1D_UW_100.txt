@@ -1,5 +1,5 @@
 Tabela de valores para implementação com 100 subintervalos
-Tempo de execução = 0.000370000000 seg.
+Tempo de execução = 0.000333000000 seg.
 
 t;x;Co
 0.000000000000;0.000000000000;0.009033694511

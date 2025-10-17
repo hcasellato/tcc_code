@@ -28,12 +28,12 @@ for t in tempos_unicos:
 
     # Plotar
     plt.figure(figsize=(8, 5))
-    plt.plot(x, U, label='Solução Numérica U(x)', marker='o', linestyle='-', color='blue')
+    plt.plot(x, U, label='Solução Numérica C(x)', marker='o', linestyle='-', color='blue')
     plt.plot(x, exact, label='Solução Exata', marker='x', linestyle='--', color='red')
     
-    plt.title(f'Comparação U(x) vs Exata - Tempo t = {t:.4f}')
+    plt.title(f'Comparação C(x) vs Exata - Tempo t = {t:.4f}')
     plt.xlabel('x')
-    plt.ylabel('U(x)')
+    plt.ylabel('C(x)')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()

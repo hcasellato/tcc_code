@@ -49,9 +49,9 @@ with imageio.get_writer("concentracao_x_posicao.gif", mode='I', duration=0.3, lo
         image = imageio.imread(filename)
         writer.append_data(image)
 
-# (Opcional) Remover os frames temporários
-for filename in filenames:
-    os.remove(filename)
-os.rmdir(folder)
+# # (Opcional) Remover os frames temporários
+# for filename in filenames:
+#     os.remove(filename)
+# os.rmdir(folder)
 
 print("GIF criado com sucesso: concentracao_x_posicao.gif")

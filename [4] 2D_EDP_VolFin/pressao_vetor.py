@@ -31,5 +31,5 @@ plt.quiver(X, Y, U_norm, V_norm, color="white", scale=30)
 
 plt.colorbar(pc1)
 plt.tight_layout()
-plt.savefig("desenvolvimento_2Deliptica_ex2.png", dpi=300, bbox_inches="tight")
+plt.savefig("desenvolvimento_2Deliptica_ex3.png", dpi=300, bbox_inches="tight")
 plt.close()
