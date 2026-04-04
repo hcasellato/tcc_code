@@ -5,7 +5,7 @@ from matplotlib.colors import LogNorm
 # =====================================
 # 1. LEITURA DO CAMPO DE PERMEABILIDADE
 # =====================================
-k_dados = np.genfromtxt("2D_VFUW_db/KField_625.txt", delimiter=';', skip_header=2)
+k_dados = np.genfromtxt("2D_VFUW_db/debug_perm.txt", delimiter=';', skip_header=1)
 xk = k_dados[:, 0]
 yk = k_dados[:, 1]
 kxy = k_dados[:, 2]
@@ -28,7 +28,7 @@ plt.title("Campo de permeabilidades (log)")
 plt.xlabel("x", rotation=0)
 plt.ylabel("y", rotation=0)
 
-pcm = plt.pcolormesh(X, Y, K, shading='auto', norm=LogNorm(), cmap='viridis')
+pcm = plt.pcolormesh(X, Y, K, shading='auto', vmin=0, vmax=1, cmap='viridis')#, norm=LogNorm())
 cbar = plt.colorbar(pcm)
 cbar.set_label("K", rotation=0)
 

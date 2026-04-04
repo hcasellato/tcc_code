@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Lê o arquivo
-filename = "1D_finVolMet_ex2/1D_finVolMet_25.txt"
+filename = "1D_finVolMet_ex2/1D_finVolMet_49.txt"
 data = np.genfromtxt(filename, delimiter=';', skip_header=3)
 
 # Separa os dados

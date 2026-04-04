@@ -222,10 +222,8 @@ int main()
   cout << "Versão SEM paralelização" << endl;
   cout << fixed << setprecision(12);
   
-  FinVol(25);
-
-  // for(int i = 2; i <= 5; i++)
-  //   FinVol(pow(10,i));
+  for(int i = 1; i <= 5; i++)
+    FinVol(pow(10,i));
 
   return 0;
 }

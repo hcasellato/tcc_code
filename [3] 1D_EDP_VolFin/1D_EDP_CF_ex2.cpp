@@ -35,14 +35,11 @@ using namespace std;
 // p(x) = x/(r - E*r + E)           se 0 <= x <= r
 // p(x) = E(x-1)/(r - E*r + E) + 1  se r <  x <= 1
 // 
-// com E = 1/7 e r = x_estrela = 1/3
-// 
-// 
 // =================================================================
 
 // Não gosto de variáveis globais, mas paciência
 double epsilon   = 1.0/7.0;
-double x_estrela = 1.0/3.0;
+double x_estrela = 2.0/5.0;
 
 double K_function(double x) {
   if(x <= x_estrela)
@@ -64,7 +61,7 @@ double K_half(double K_1, double K_2) {
 
 // Função exata, se houver
 double exact_solution(double x) {
-  if(x < x_estrela)
+  if(x <= x_estrela)
     return x / (x_estrela - epsilon*x_estrela + epsilon);
   else
     return 1.0 + (epsilon*(x-1.0))/(x_estrela-epsilon*x_estrela+epsilon);
@@ -231,7 +228,7 @@ int main()
 {
   cout << "Versão SEM paralelização" << endl;
   cout << fixed << setprecision(12);
-  FinVol(25);
+  FinVol(49);
 
   return 0;
 }
